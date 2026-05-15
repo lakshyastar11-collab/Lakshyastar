@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { saveAs } from "file-saver";
 import { app, db } from "./firebase";
 
 import {
   getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signOut,
 } from "firebase/auth";
 
 import {
@@ -12,10 +14,13 @@ import {
   addDoc,
   getDocs,
   query,
-  orderBy
+  orderBy,
+  deleteDoc,
+  doc
 } from "firebase/firestore";
 
 function App() {
+
   const auth = getAuth(app);
 
   const [user, setUser] = useState(null);
@@ -27,31 +32,42 @@ function App() {
   const [deposit, setDeposit] = useState("");
   const [bonus, setBonus] = useState("");
   const [withdrawal, setWithdrawal] = useState("");
+  const [closing, setClosing] = useState("");
 
   const [entries, setEntries] = useState([]);
 
-  // 🔥 LOAD DATA
+  const [search, setSearch] = useState("");
+
   const loadData = async () => {
-    const q = query(collection(db, "ledger"), orderBy("date", "asc"));
+
+    const q = query(
+      collection(db, "ledger"),
+      orderBy("date", "desc")
+    );
+
     const snap = await getDocs(q);
 
     const data = [];
-    snap.forEach((doc) => {
-      data.push(doc.data());
+
+    snap.forEach((docSnap) => {
+      data.push({
+        id: docSnap.id,
+        ...docSnap.data()
+      });
     });
 
     setEntries(data);
   };
 
-  // 🔐 SIGNUP
   const signup = () => {
+
     createUserWithEmailAndPassword(auth, email, password)
       .then(() => alert("Signup Successful 🎉"))
       .catch((e) => alert(e.message));
   };
 
-  // 🔐 LOGIN
   const login = () => {
+
     signInWithEmailAndPassword(auth, email, password)
       .then((res) => {
         setUser(res.user);
@@ -60,31 +76,36 @@ function App() {
       .catch((e) => alert(e.message));
   };
 
-  // ➕ ADD ENTRY
+  const logout = async () => {
+
+    await signOut(auth);
+    setUser(null);
+    alert("Logout Successful 👋");
+  };
+
+  // MAIN RULE LOGIC
   const addEntry = async () => {
+
     let prevClosing =
-      entries.length > 0
-        ? entries[entries.length - 1].closing
-        : 0;
+      entries.length > 0 ? entries[0].closing : 0;
 
-    let opening = prevClosing;
+    let opening = Number(prevClosing);
 
-    let dep = Number(deposit);
-    let bon = Number(bonus);
-    let wit = Number(withdrawal);
+    let dep = Number(deposit || 0);
+    let bon = Number(bonus || 0);
+    let wit = Number(withdrawal || 0);
+    let clos = Number(closing || 0);
 
-    let expected = opening + dep + bon - wit;
-
-    // 👉 SIMPLE RULE
-    let closing = expected;
+    let leftSide = opening + dep;
+    let rightSide = bon + wit + clos;
 
     let profit = 0;
     let loss = 0;
 
-    if (closing > expected) {
-      profit = closing - expected;
-    } else if (closing < expected) {
-      loss = expected - closing;
+    if (leftSide < rightSide) {
+      profit = rightSide - leftSide;
+    } else if (leftSide > rightSide) {
+      loss = leftSide - rightSide;
     }
 
     const newEntry = {
@@ -93,77 +114,155 @@ function App() {
       deposit: dep,
       bonus: bon,
       withdrawal: wit,
-      closing,
+      closing: clos,
       profit,
       loss,
     };
 
-    await addDoc(collection(db, "ledger"), newEntry);
+    const docRef = await addDoc(
+      collection(db, "ledger"),
+      newEntry
+    );
 
-    setEntries([...entries, newEntry]);
+    setEntries([
+      { id: docRef.id, ...newEntry },
+      ...entries
+    ]);
 
     setDate("");
     setDeposit("");
     setBonus("");
     setWithdrawal("");
+    setClosing("");
   };
 
+  const deleteEntry = async (id) => {
+
+    const confirmDelete = window.confirm("Delete this entry?");
+    if (!confirmDelete) return;
+
+    await deleteDoc(doc(db, "ledger", id));
+
+    setEntries(entries.filter((e) => e.id !== id));
+  };
+
+  const exportCSV = () => {
+
+    let csvData =
+      "Date,Opening,Deposit,Bonus,Withdrawal,Closing,Profit,Loss\n";
+
+    entries.forEach((e) => {
+      csvData +=
+        '${e.date},${e.opening},${e.deposit},${e.bonus},${e.withdrawal},${e.closing},${e.profit},${e.loss}\n';
+    });
+
+    const blob = new Blob([csvData], {
+      type: "text/csv;charset=utf-8;"
+    });
+
+    saveAs(blob, "ledger-data.csv");
+  };
+
+  // TOTALS
   const totalProfit = entries.reduce((a, b) => a + b.profit, 0);
   const totalLoss = entries.reduce((a, b) => a + b.loss, 0);
+  const totalDeposit = entries.reduce((a, b) => a + b.deposit, 0);
+  const totalBonus = entries.reduce((a, b) => a + b.bonus, 0);
+  const totalWithdrawal = entries.reduce((a, b) => a + b.withdrawal, 0);
 
-  // 🔐 LOGIN SCREEN
+  const currentBalance =
+    entries.length > 0 ? entries[0].closing : 0;
+
+  const filteredEntries = entries.filter((e) =>
+    e.date.toLowerCase().includes(search.toLowerCase())
+  );
+
   if (!user) {
     return (
-      <div style={{ padding: 20 }}>
-        <h2>Login</h2>
+      <div className="container mt-5">
+        <div className="card p-4 shadow">
 
-        <input
-          placeholder="Email"
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <br /><br />
+          <h2 className="text-center mb-4">Login</h2>
 
-        <input
-          type="password"
-          placeholder="Password"
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <br /><br />
+          <input className="form-control mb-3" placeholder="Email"
+            onChange={(e) => setEmail(e.target.value)} />
 
-        <button onClick={signup}>Signup</button>
-        <button onClick={login}>Login</button>
+          <input className="form-control mb-3" type="password"
+            placeholder="Password"
+            onChange={(e) => setPassword(e.target.value)} />
+
+          <button className="btn btn-warning w-100 mb-2" onClick={signup}>
+            Signup
+          </button>
+
+          <button className="btn btn-success w-100" onClick={login}>
+            Login
+          </button>
+
+        </div>
       </div>
     );
   }
 
-  // 📊 DASHBOARD
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Balance Ledger 📊</h2>
+    <div className="container mt-4">
 
-      <input type="date" onChange={(e) => setDate(e.target.value)} />
-      <br /><br />
+      <div className="card p-4 shadow">
 
-      <input placeholder="Deposit" onChange={(e) => setDeposit(e.target.value)} />
-      <br /><br />
+        <div className="d-flex justify-content-between mb-3">
 
-      <input placeholder="Bonus" onChange={(e) => setBonus(e.target.value)} />
-      <br /><br />
+          <h2>Balance Ledger 📊</h2>
 
-      <input placeholder="Withdrawal" onChange={(e) => setWithdrawal(e.target.value)} />
-      <br /><br />
+          <button className="btn btn-dark" onClick={logout}>
+            Logout
+          </button>
 
-      <button onClick={addEntry}>Add Entry</button>
+        </div>
 
-      <hr />
+        <h4>Current Balance: ₹{currentBalance}</h4>
 
-      <h3>Total Profit: {totalProfit}</h3>
-      <h3>Total Loss: {totalLoss}</h3>
+        <hr />
 
-      <hr />
+        <input className="form-control mb-2" type="date"
+          value={date} onChange={(e) => setDate(e.target.value)} />
 
-      <table border="1" cellPadding="5">
-        <thead>
+        <input className="form-control mb-2" placeholder="Deposit"
+          value={deposit} onChange={(e) => setDeposit(e.target.value)} />
+
+        <input className="form-control mb-2" placeholder="Bonus"
+          value={bonus} onChange={(e) => setBonus(e.target.value)} />
+
+        <input className="form-control mb-2" placeholder="Withdrawal"
+          value={withdrawal} onChange={(e) => setWithdrawal(e.target.value)} />
+
+        <input className="form-control mb-2" placeholder="Closing"
+          value={closing} onChange={(e) => setClosing(e.target.value)} />
+
+        <button className="btn btn-primary w-100" onClick={addEntry}>
+          Add Entry
+        </button>
+
+        <hr />
+
+        <div className="row text-center">
+
+          <div className="col-md-2"><h6>Profit</h6><p>₹{totalProfit}</p></div>
+          <div className="col-md-2"><h6>Loss</h6><p>₹{totalLoss}</p></div>
+          <div className="col-md-2"><h6>Deposit</h6><p>₹{totalDeposit}</p></div>
+          <div className="col-md-2"><h6>Bonus</h6><p>₹{totalBonus}</p></div>
+          <div className="col-md-2"><h6>Withdrawal</h6><p>₹{totalWithdrawal}</p></div>
+
+        </div>
+
+      </div>
+
+      <input className="form-control mt-3 mb-3"
+        placeholder="Search by Date"
+        onChange={(e) => setSearch(e.target.value)} />
+
+      <table className="table table-bordered table-striped">
+
+        <thead className="table-dark">
           <tr>
             <th>Date</th>
             <th>Opening</th>
@@ -173,12 +272,13 @@ function App() {
             <th>Closing</th>
             <th>Profit</th>
             <th>Loss</th>
+            <th>Action</th>
           </tr>
         </thead>
 
         <tbody>
-          {entries.map((e, i) => (
-            <tr key={i}>
+          {filteredEntries.map((e) => (
+            <tr key={e.id}>
               <td>{e.date}</td>
               <td>{e.opening}</td>
               <td>{e.deposit}</td>
@@ -187,10 +287,18 @@ function App() {
               <td>{e.closing}</td>
               <td>{e.profit}</td>
               <td>{e.loss}</td>
+              <td>
+                <button className="btn btn-danger btn-sm"
+                  onClick={() => deleteEntry(e.id)}>
+                  Delete
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
+
       </table>
+
     </div>
   );
 }
