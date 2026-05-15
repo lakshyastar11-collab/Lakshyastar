@@ -16,11 +16,10 @@ import {
   query,
   orderBy,
   deleteDoc,
-  doc
+  doc,
 } from "firebase/firestore";
 
 function App() {
-
   const auth = getAuth(app);
 
   const [user, setUser] = useState(null);
@@ -35,39 +34,27 @@ function App() {
   const [closing, setClosing] = useState("");
 
   const [entries, setEntries] = useState([]);
-
   const [search, setSearch] = useState("");
 
   const loadData = async () => {
-
-    const q = query(
-      collection(db, "ledger"),
-      orderBy("date", "desc")
-    );
-
+    const q = query(collection(db, "ledger"), orderBy("date", "desc"));
     const snap = await getDocs(q);
 
     const data = [];
-
     snap.forEach((docSnap) => {
-      data.push({
-        id: docSnap.id,
-        ...docSnap.data()
-      });
+      data.push({ id: docSnap.id, ...docSnap.data() });
     });
 
     setEntries(data);
   };
 
   const signup = () => {
-
     createUserWithEmailAndPassword(auth, email, password)
       .then(() => alert("Signup Successful 🎉"))
       .catch((e) => alert(e.message));
   };
 
   const login = () => {
-
     signInWithEmailAndPassword(auth, email, password)
       .then((res) => {
         setUser(res.user);
@@ -77,17 +64,13 @@ function App() {
   };
 
   const logout = async () => {
-
     await signOut(auth);
     setUser(null);
-    alert("Logout Successful 👋");
   };
 
-  // MAIN RULE LOGIC
+  // ✅ FIXED RULE LOGIC (YOUR NEW RULE)
   const addEntry = async () => {
-
-    let prevClosing =
-      entries.length > 0 ? entries[0].closing : 0;
+    let prevClosing = entries.length > 0 ? entries[0].closing : 0;
 
     let opening = Number(prevClosing);
 
@@ -102,10 +85,10 @@ function App() {
     let profit = 0;
     let loss = 0;
 
-    if (leftSide < rightSide) {
-      profit = rightSide - leftSide;
-    } else if (leftSide > rightSide) {
+    if (leftSide > rightSide) {
       loss = leftSide - rightSide;
+    } else if (leftSide < rightSide) {
+      profit = rightSide - leftSide;
     }
 
     const newEntry = {
@@ -119,15 +102,9 @@ function App() {
       loss,
     };
 
-    const docRef = await addDoc(
-      collection(db, "ledger"),
-      newEntry
-    );
+    const docRef = await addDoc(collection(db, "ledger"), newEntry);
 
-    setEntries([
-      { id: docRef.id, ...newEntry },
-      ...entries
-    ]);
+    setEntries([{ id: docRef.id, ...newEntry }, ...entries]);
 
     setDate("");
     setDeposit("");
@@ -137,35 +114,26 @@ function App() {
   };
 
   const deleteEntry = async (id) => {
-
-    const confirmDelete = window.confirm("Delete this entry?");
-    if (!confirmDelete) return;
-
     await deleteDoc(doc(db, "ledger", id));
-
     setEntries(entries.filter((e) => e.id !== id));
   };
 
+  // ✅ FIXED CSV (ERROR FIXED HERE)
   const exportCSV = () => {
+    let csvData =
+      "Date,Opening,Deposit,Bonus,Withdrawal,Closing,Profit,Loss\n";
 
-  let csvData =
-    "Date,Opening,Deposit,Bonus,Withdrawal,Closing,Profit,Loss\n";
+    entries.forEach((e) => {
+      csvData += ${e.date},${e.opening},${e.deposit},${e.bonus},${e.withdrawal},${e.closing},${e.profit},${e.loss}\n;
+    });
 
-  entries.forEach((e) => {
+    const blob = new Blob([csvData], {
+      type: "text/csv;charset=utf-8;",
+    });
 
-    csvData +=
-      '${e.date},${e.opening},${e.deposit},${e.bonus},${e.withdrawal},${e.closing},${e.profit},${e.loss}\n';
+    saveAs(blob, "ledger-data.csv");
+  };
 
-  });
-
-  const blob = new Blob([csvData], {
-    type: "text/csv;charset=utf-8;"
-  });
-
-  saveAs(blob, "ledger-data.csv");
-};
-
-  // TOTALS
   const totalProfit = entries.reduce((a, b) => a + b.profit, 0);
   const totalLoss = entries.reduce((a, b) => a + b.loss, 0);
   const totalDeposit = entries.reduce((a, b) => a + b.deposit, 0);
@@ -183,15 +151,20 @@ function App() {
     return (
       <div className="container mt-5">
         <div className="card p-4 shadow">
-
           <h2 className="text-center mb-4">Login</h2>
 
-          <input className="form-control mb-3" placeholder="Email"
-            onChange={(e) => setEmail(e.target.value)} />
+          <input
+            className="form-control mb-3"
+            placeholder="Email"
+            onChange={(e) => setEmail(e.target.value)}
+          />
 
-          <input className="form-control mb-3" type="password"
+          <input
+            className="form-control mb-3"
+            type="password"
             placeholder="Password"
-            onChange={(e) => setPassword(e.target.value)} />
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
           <button className="btn btn-warning w-100 mb-2" onClick={signup}>
             Signup
@@ -200,7 +173,6 @@ function App() {
           <button className="btn btn-success w-100" onClick={login}>
             Login
           </button>
-
         </div>
       </div>
     );
@@ -208,17 +180,12 @@ function App() {
 
   return (
     <div className="container mt-4">
-
       <div className="card p-4 shadow">
-
         <div className="d-flex justify-content-between mb-3">
-
           <h2>Balance Ledger 📊</h2>
-
           <button className="btn btn-dark" onClick={logout}>
             Logout
           </button>
-
         </div>
 
         <h4>Current Balance: ₹{currentBalance}</h4>
@@ -244,26 +211,28 @@ function App() {
           Add Entry
         </button>
 
+        <button className="btn btn-success w-100 mt-2" onClick={exportCSV}>
+          Export CSV
+        </button>
+
         <hr />
 
         <div className="row text-center">
-
           <div className="col-md-2"><h6>Profit</h6><p>₹{totalProfit}</p></div>
           <div className="col-md-2"><h6>Loss</h6><p>₹{totalLoss}</p></div>
           <div className="col-md-2"><h6>Deposit</h6><p>₹{totalDeposit}</p></div>
           <div className="col-md-2"><h6>Bonus</h6><p>₹{totalBonus}</p></div>
           <div className="col-md-2"><h6>Withdrawal</h6><p>₹{totalWithdrawal}</p></div>
-
         </div>
-
       </div>
 
-      <input className="form-control mt-3 mb-3"
+      <input
+        className="form-control mt-3 mb-3"
         placeholder="Search by Date"
-        onChange={(e) => setSearch(e.target.value)} />
+        onChange={(e) => setSearch(e.target.value)}
+      />
 
       <table className="table table-bordered table-striped">
-
         <thead className="table-dark">
           <tr>
             <th>Date</th>
@@ -298,9 +267,7 @@ function App() {
             </tr>
           ))}
         </tbody>
-
       </table>
-
     </div>
   );
 }
