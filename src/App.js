@@ -154,7 +154,7 @@ function App() {
   entries.forEach((e) => {
 
     csvData +=
-      ${e.date},${e.opening},${e.deposit},${e.bonus},${e.withdrawal},${e.closing},${e.profit},${e.loss}\n;
+      '${e.date},${e.opening},${e.deposit},${e.bonus},${e.withdrawal},${e.closing},${e.profit},${e.loss}\n';
 
   });
 
