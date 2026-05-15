@@ -148,20 +148,22 @@ function App() {
 
   const exportCSV = () => {
 
-    let csvData =
-      "Date,Opening,Deposit,Bonus,Withdrawal,Closing,Profit,Loss\n";
+  let csvData =
+    "Date,Opening,Deposit,Bonus,Withdrawal,Closing,Profit,Loss\n";
 
-    entries.forEach((e) => {
-      csvData +=
-        '${e.date},${e.opening},${e.deposit},${e.bonus},${e.withdrawal},${e.closing},${e.profit},${e.loss}\n';
-    });
+  entries.forEach((e) => {
 
-    const blob = new Blob([csvData], {
-      type: "text/csv;charset=utf-8;"
-    });
+    csvData +=
+      ${e.date},${e.opening},${e.deposit},${e.bonus},${e.withdrawal},${e.closing},${e.profit},${e.loss}\n;
 
-    saveAs(blob, "ledger-data.csv");
-  };
+  });
+
+  const blob = new Blob([csvData], {
+    type: "text/csv;charset=utf-8;"
+  });
+
+  saveAs(blob, "ledger-data.csv");
+};
 
   // TOTALS
   const totalProfit = entries.reduce((a, b) => a + b.profit, 0);
