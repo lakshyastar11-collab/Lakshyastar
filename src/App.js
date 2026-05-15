@@ -125,7 +125,7 @@ function App() {
       "Date,Opening,Deposit,Bonus,Withdrawal,Closing,Profit,Loss\n";
 
     entries.forEach((e) => {
-      csvData += '${e.date},${e.opening},${e.deposit},${e.bonus},${e.withdrawal},${e.closing},${e.profit},${e.loss}\n';
+    csvData += '${e.date},${e.opening},${e.deposit},${e.bonus},${e.withdrawal},${e.closing},${e.profit},${e.loss}\n;'
     });
 
     const blob = new Blob([csvData], {
