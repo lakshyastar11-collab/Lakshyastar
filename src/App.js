@@ -68,11 +68,12 @@ function App() {
     setUser(null);
   };
 
-  // ✅ FIXED RULE LOGIC (YOUR NEW RULE)
+  // ✅ MAIN RULE LOGIC (FIXED)
   const addEntry = async () => {
-    let prevClosing = entries.length > 0 ? entries[0].closing : 0;
+    let prevClosing =
+      entries.length > 0 ? entries[0].closing : 0;
 
-    let opening = Number(prevClosing);
+    let opening = Number(prevClosing || 0);
 
     let dep = Number(deposit || 0);
     let bon = Number(bonus || 0);
@@ -118,7 +119,7 @@ function App() {
     setEntries(entries.filter((e) => e.id !== id));
   };
 
-  // ✅ FIXED CSV (ERROR FIXED HERE)
+  // ✅ CSV FIXED (NO ERROR)
   const exportCSV = () => {
     let csvData =
       "Date,Opening,Deposit,Bonus,Withdrawal,Closing,Profit,Loss\n";
@@ -134,17 +135,20 @@ function App() {
     saveAs(blob, "ledger-data.csv");
   };
 
-  const totalProfit = entries.reduce((a, b) => a + b.profit, 0);
-  const totalLoss = entries.reduce((a, b) => a + b.loss, 0);
-  const totalDeposit = entries.reduce((a, b) => a + b.deposit, 0);
-  const totalBonus = entries.reduce((a, b) => a + b.bonus, 0);
-  const totalWithdrawal = entries.reduce((a, b) => a + b.withdrawal, 0);
+  // TOTALS
+  const totalProfit = entries.reduce((a, b) => a + (b.profit || 0), 0);
+  const totalLoss = entries.reduce((a, b) => a + (b.loss || 0), 0);
+  const totalDeposit = entries.reduce((a, b) => a + (b.deposit || 0), 0);
+  const totalBonus = entries.reduce((a, b) => a + (b.bonus || 0), 0);
+  const totalWithdrawal = entries.reduce((a, b) => a + (b.withdrawal || 0), 0);
 
   const currentBalance =
     entries.length > 0 ? entries[0].closing : 0;
 
   const filteredEntries = entries.filter((e) =>
-    e.date.toLowerCase().includes(search.toLowerCase())
+    String(e.date || "")
+      .toLowerCase()
+      .includes(search.toLowerCase())
   );
 
   if (!user) {
@@ -181,6 +185,7 @@ function App() {
   return (
     <div className="container mt-4">
       <div className="card p-4 shadow">
+
         <div className="d-flex justify-content-between mb-3">
           <h2>Balance Ledger 📊</h2>
           <button className="btn btn-dark" onClick={logout}>
@@ -259,8 +264,10 @@ function App() {
               <td>{e.profit}</td>
               <td>{e.loss}</td>
               <td>
-                <button className="btn btn-danger btn-sm"
-                  onClick={() => deleteEntry(e.id)}>
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={() => deleteEntry(e.id)}
+                >
                   Delete
                 </button>
               </td>
