@@ -47,9 +47,9 @@ function App() {
         setUser(null);
       }
     });
-
+    
     return () => unsubscribe();
-  }, []);
+  }, [auth]);
 
   const loadData = async () => {
     const q = query(collection(db, "ledger"), orderBy("date", "desc"));
