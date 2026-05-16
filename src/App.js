@@ -47,7 +47,7 @@ function App() {
         setUser(null);
       }
     });
-    
+
     return () => unsubscribe();
   }, [auth]);
 
@@ -198,6 +198,8 @@ function App() {
   const currentBalance =
     entries.length > 0 ? entries[0].closing : 0;
 
+  const totalEarn = totalProfit - totalLoss;
+
   const filteredEntries = entries.filter((e) =>
     String(e.date || "")
       .toLowerCase()
@@ -265,6 +267,15 @@ function App() {
 
         <h4>
           Current Balance: ₹{currentBalance}
+        </h4>
+
+        <h4
+          style={{
+            color: totalEarn >= 0 ? "green" : "red",
+            marginTop: "10px",
+          }}
+        >
+          Total Earn: ₹{totalEarn}
         </h4>
 
         <hr />
